@@ -3,7 +3,7 @@ import jinja2
 import pandas as pd
 import geopandas as gpd
 
-from eurocalliopelib import filters
+import filters
 
 TEMPLATE = """locations:
     {% for id, location in locations.iterrows() %}
@@ -13,9 +13,17 @@ TEMPLATE = """locations:
         techs:
             demand_elec:
             battery:
+                constraints:
+                    energy_cap_max: {{ location.eligibility_battery_mw * scaling_factors.power  }} # {{ (1 / scaling_factors.power) | unit("MW") }}            
             hydrogen:
+                constraints:
+                    energy_cap_max: {{ location.eligibility_hydrogen_mw * scaling_factors.power  }} # {{ (1 / scaling_factors.power) | unit("MW") }}            
             open_field_pv:
+                constraints:
+                    energy_cap_max: {{ location.eligibility_open_field_pv_mw * scaling_factors.power  }} # {{ (1 / scaling_factors.power) | unit("MW") }}            
             wind_onshore_competing:
+                constraints:
+                    energy_cap_max: {{ location.eligibility_onshore_wind_competing_mw * scaling_factors.power }} # {{ (1 / scaling_factors.power) | unit("MW") }}
             wind_onshore_monopoly:
                 constraints:
                     energy_cap_max: {{ location.eligibility_onshore_wind_monopoly_mw * scaling_factors.power }} # {{ (1 / scaling_factors.power) | unit("MW") }}
@@ -40,6 +48,7 @@ TEMPLATE = """locations:
                 constraints:
                     resource: {{ location.biofuel_potential_mwh_per_year / 8760 * scaling_factors.power }} # {{ (1 / scaling_factors.power) | unit("MW") }}
                     storage_cap_equals: {{ location.biofuel_potential_mwh_per_year / 2 * scaling_factors.power }} # {{ (1 / scaling_factors.power) | unit("MWh") }} (0.5x annual yield) # ASSUME < 1 for numerical range
+                    energy_cap_max: v{{ location.biofuel_potential_mwh_per_year / 2 / 8760 * scaling_factors.power }} # {{ (1 / scaling_factors.power) | unit("MW") }}
     {% endfor %}
 overrides:
     freeze-hydro-capacities:
@@ -113,6 +122,16 @@ def _from_area_to_installed_capacity(land_eligibiligy_km2, flat_roof_share,
     cap["eligibility_rooftop_pv_mw"] = cap["eligibility_rooftop_pv_km2"] * factor_rooftop
     cap["eligibility_offshore_wind_mw"] = cap["eligibility_offshore_wind_km2"] * factor_offshore
     cap["eligibility_onshore_wind_monopoly_mw"] = cap["eligibility_onshore_wind_km2"] * factor_onshore
+    cap["eligibility_open_field_pv_mw"] = cap["eligibility_onshore_wind_and_pv_km2"] * maximum_installable_power_density["pv-on-flat-areas"]
+    cap["eligibility_onshore_wind_competing_mw"] = cap["eligibility_onshore_wind_and_pv_km2"] * factor_onshore
+    tot_max_renewable_cap = (
+        cap["eligibility_onshore_wind_competing_mw"] + cap["eligibility_open_field_pv_mw"] + cap["eligibility_onshore_wind_monopoly_mw"]
+        + cap["eligibility_offshore_wind_mw"] + cap["eligibility_rooftop_pv_mw"]
+    )
+    cap["eligibility_hydrogen_mw"] = 0.6325 * tot_max_renewable_cap
+    cap["eligibility_battery_mw"] = 0.9273 * tot_max_renewable_cap
+
+
     return cap
 
 
