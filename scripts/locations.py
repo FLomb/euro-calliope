@@ -13,9 +13,17 @@ TEMPLATE = """locations:
         techs:
             demand_elec:
             battery:
+                constraints:
+                    energy_cap_max: {{ location.eligibility_battery_mw * scaling_factors.power  }} # {{ (1 / scaling_factors.power) | unit("MW") }}            
             hydrogen:
+                constraints:
+                    energy_cap_max: {{ location.eligibility_hydrogen_mw * scaling_factors.power  }} # {{ (1 / scaling_factors.power) | unit("MW") }}            
             open_field_pv:
+                constraints:
+                    energy_cap_max: {{ location.eligibility_open_field_pv_mw * scaling_factors.power  }} # {{ (1 / scaling_factors.power) | unit("MW") }}            
             wind_onshore_competing:
+                constraints:
+                    energy_cap_max: {{ location.eligibility_onshore_wind_competing_mw * scaling_factors.power }} # {{ (1 / scaling_factors.power) | unit("MW") }}
             wind_onshore_monopoly:
                 constraints:
                     energy_cap_max: {{ location.eligibility_onshore_wind_monopoly_mw * scaling_factors.power }} # {{ (1 / scaling_factors.power) | unit("MW") }}
@@ -40,6 +48,7 @@ TEMPLATE = """locations:
                 constraints:
                     resource: {{ location.biofuel_potential_mwh_per_year / 8760 * scaling_factors.power }} # {{ (1 / scaling_factors.power) | unit("MW") }}
                     storage_cap_equals: {{ location.biofuel_potential_mwh_per_year / 2 * scaling_factors.power }} # {{ (1 / scaling_factors.power) | unit("MWh") }} (0.5x annual yield) # ASSUME < 1 for numerical range
+                    energy_cap_max: v{{ location.biofuel_potential_mwh_per_year / 2 / (8760*0.1) * scaling_factors.power }} # {{ (1 / scaling_factors.power) | unit("MW") }}
     {% endfor %}
 overrides:
     freeze-hydro-capacities:
